@@ -1,4 +1,4 @@
 from aiogram.fsm.state import StatesGroup, State
 
-class panell(StatesGroup):
-    root = State()
+class stars_count(StatesGroup):
+    count = State()

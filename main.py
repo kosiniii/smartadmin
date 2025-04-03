@@ -4,35 +4,31 @@ import uvicorn
 from fastapi import FastAPI, Request, Depends
 from aiogram import Dispatcher, Router, Bot
 import logging
-from aiogram.enums import ParseMode
-from aiogram.loggers import webhook
 from aiogram.types import Update
-from sqlalchemy.ext.asyncio import AsyncSession
-from aiogram.client.bot import DefaultBotProperties
-from config import env_import
 from data.middlew import DatabaseMiddleware
 from data.sqltables import create_tables
-from utils.inputing import __env__
+from utils.inputing import __env__, bot
 from data.sqltables import async_session
 
 router = Router(name=__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 dp = Dispatcher()
-bot = Bot(
-    token=__env__('MAIN_BOT_TOKEN'),
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
-logging.basicConfig(level=logging.INFO)
 
+logging.basicConfig(level=logging.INFO)
+setup_webhook = __env__('LOCALHOST_WEBHOOK')
 
 def create_lifespan(bot: Bot):
+    if '/webhook' in setup_webhook:
+        webhooki = setup_webhook
+    else:
+        webhooki = setup_webhook + '/webhook'   
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         webhook_info = await bot.get_webhook_info()
-        if webhook_info.url != __env__('LOCALHOST_WEBHOOK'):
+        if webhook_info.url != webhooki:
             logger.info("Bot started...")
-            await bot.set_webhook(__env__('LOCALHOST_WEBHOOK'))
+            await bot.set_webhook(webhooki)
         asyncio.run(create_tables())
             
         yield

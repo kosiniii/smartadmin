@@ -15,6 +15,7 @@ def env_import(key: str) -> Any:
     ADMIN_ID = int(os.getenv('ADMIN_ID'))
     MAIN_BOT_USERNAME = os.getenv('MAIN_BOT_USERNAME')
     PROJECT_ON_GITHUB = os.getenv('PROJECT_ON_GITHUB')
+    PROVIDER_TOKEN_PAY = os.getenv('PROVIDER_TOKEN_PAY')
     
     stack = {
         'MAIN_BOT_TOKEN': MAIN_BOT_TOKEN,
@@ -24,7 +25,8 @@ def env_import(key: str) -> Any:
         'LOCALHOST_DATABASE_URL': LOCALHOST_DATABASE_URL,
         'ADMIN_ID': ADMIN_ID,
         'MAIN_BOT_USERNAME': "@".join(MAIN_BOT_USERNAME),
-        'PROJECT_ON_GITHUB': PROJECT_ON_GITHUB
+        'PROJECT_ON_GITHUB': PROJECT_ON_GITHUB,
+        'PROVIDER_TOKEN_PAY': PROVIDER_TOKEN_PAY,
     }
     
     for keys, value in stack.items():
