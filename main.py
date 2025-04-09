@@ -9,11 +9,12 @@ from data.middlew import DatabaseMiddleware
 from data.sqltables import create_tables
 from utils.inputing import __env__, bot
 from data.sqltables import async_session
+from utils.inputing import dp
 
 router = Router(name=__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-dp = Dispatcher()
+
 
 logging.basicConfig(level=logging.INFO)
 setup_webhook = __env__('LOCALHOST_WEBHOOK')

@@ -13,7 +13,8 @@ from commands.states.state import panell, stars_count
 from config import env_import
 from data.sqltables import MePayments, User
 from keyborads.inline import commands_help_admin, dash_panel, pay_stars
-from utils.tools import BasicUser, Update_date
+from utils.dataclass import BasicUser
+from utils.tools import Update_date
 from utils.inputing import __env__
 from utils.inputing import bot
 
