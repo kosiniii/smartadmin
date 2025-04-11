@@ -46,3 +46,6 @@ class Help_Commands:
         warn = '/warn'
         role = '/role'
 
+class Data:
+    
+    settings = 'settings'

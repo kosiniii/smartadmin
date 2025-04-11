@@ -14,7 +14,7 @@ from config import env_import
 from data.sqltables import MePayments, User
 from keyborads.inline import commands_help_admin, dash_panel, pay_stars
 from utils.dataclass import BasicUser
-from utils.tools import Update_date
+from utils.tools import BaseDAO, PaymentService, UpdateDAO, Update_date, changes_data
 from utils.inputing import __env__
 from utils.inputing import bot
 
@@ -26,13 +26,20 @@ router = Router(name=__name__)
 async def starting(message: Message):
     await message.answer(
         text='🚀 Я бот администратор.\n'
-        'Посмотреть как использовать /help\n'
-        'Если вы хотите поддержать разработчика то /donate\n\n'
-        'У вас есть вопросы? Вы нашли ошибку? или у вас есть доп. идеи?\n'
-        'То обратится в поддержку бота можно на прямую @KociHH\n',
+        '/help Посмотреть как использовать\n'
+        '/donate Если вы хотите поддержать разработчика\n\n'
+        '/settings Настроить бота'
+        '/see Посмотреть статистику чата',
         reply_markup=dash_panel()
         )
-  
+        
+@router.message(Command('/see', prefix='/'))
+async def seemore(message: Message, db_session: AsyncSession):
+    pass
+
+@router.message(Command('settings', prefix='/'))
+async def commsettings():
+    pass
 
 @router.message(Command(commands='/donate', prefix='/'))
 async def me_donation(message: Message, state: FSMContext):
@@ -74,47 +81,28 @@ async def create_payment_stars(message: Message, state: FSMContext):
 async def pre_checkout_handler(pre_checkout: PreCheckoutQuery):
     await pre_checkout.answer(ok=True) 
 
-#user_id
-#donated_stars
-#payment_count
-
 @router.message(lambda msg: msg.successful_payment and msg.chat.type == "private")
 async def successful_payment(message: Message, db_session: AsyncSession):
+    user_id = message.from_user.id
     amount = message.successful_payment.total_amount / 200
     amount_rub = amount * 2
-    user_id = message.from_user.id
-    base = await db_session.execute(select(MePayments).where(MePayments.user_id == user_id and User.user_id == user_id))
-    find_user = base.scalars().one_or_none()
-    payment_count = 1 + find_user.payment_count
-    stars_amount = amount + find_user.donated_stars
     
-    if find_user:
-        update = Update_date(
-            base=find_user,
-            params={
-                'user_id': user_id,
-                'donated_stars': stars_amount,
-                'payment_count': payment_count
-            }
+    paym = PaymentService(db_session)
+    data = paym.add_or_update_payment(user_id, amount)
+    if data:
+        payment_count: int = data.get('payment_count')
+  
+        logger.info(f'Оплата прошла:\n amount: {amount_rub}\n user_id: {user_id}') 
+        result_text = (f'\n Вы донатите уже {markdown.hbold(payment_count)} раза!'
+                    f'\n 💫 Звезд сколько вы уже задонатили: {markdown.hbold(amount)} 💫'
+                    f'\n Огромное вам спасибо 🤗')          
+        await message.answer(
+            f"❤️ Огромное спасибо за кровно потраченные {markdown.hbold(amount_rub)}₽ ❤️"
+            f"{f'\n {result_text if payment_count > 1 else None}'}"
         )
-        await update.save_(db_session)
     else:
-        user = MePayments(
-            user_id = user_id,
-            donated_stars = amount,
-            payment_count = 1
-        )
-        await db_session.add(user)
-        db_session.commit()
-    
-    logger.info(f'Оплата прошла:\n amount: {amount_rub}\n user_id: {user_id}') 
-    result_text = (f'\n Вы донатите уже {markdown.hbold(payment_count)} раза!'
-                  f'\n 💫 Звезд сколько вы уже задонатили: {markdown.hbold(amount)} 💫'
-                  f'\n Огромное вам спасибо 🤗')          
-    await message.answer(
-        f"❤️ Огромное спасибо за кровно потраченные {markdown.hbold(amount_rub)}₽ ❤️"
-        f"{f'\n {result_text if find_user.payment_count > 1 else None}'}"
-        )
+        await message.answer('Произошла ошибка при получении данных.')
+        logger.info('Ошибка в base.changes_data()')
     
 
 @router.message(Command('help', prefix='/'))
@@ -124,47 +112,37 @@ async def help_for_admins(message: Message):
         reply_markup=commands_help_admin()
         )
 
-
-@router.message(Command.commands['/start', '/donate', '/help'])  
+@router.message(Command.commands['/start', '/donate', '/help', '/settings'])  
 async def commands_add(message: Message, db_session: AsyncSession):
     user = BasicUser.from_message(message)
-    
-    ADMIN_ID = env_import('ADMIN_ID')
-    full_name = user.full_name
-    user_id = user.user_id
-    user_name = user.user_name
+    response = User.user_id == user.user_id
+    data = {
+            'user_id': user.user_id,
+            'user_name': user.user_name,
+            'full_name': user.full_name,
+            'admin_status': admin_status        
+        }
+    ADMIN_ID = __env__('ADMIN_ID')
     admin_status = 'user'
     
     if isinstance(ADMIN_ID, int) and ' ' not in ADMIN_ID:
-        if user_id == env_import('ADMIN_ID'):
+        if user.user_id == ADMIN_ID:
             admin_status = 'admin'
     else:
         for ids in ADMIN_ID:
-            if ids == user_id:
+            if ids == user.user_id:
                 admin_status = 'admin'
     
-    base = await db_session.execute(select(User).where(User.user_id == user_id))
-    result_base = base.scalars().one_or_none()
-    if result_base:
-        update = Update_date(
-            base=result_base,
-            params={
-                'user_id': user_id,
-                'user_name': user_name,
-                'full_name': full_name,
-                'admin_status': admin_status
-            }
+    dao = BaseDAO(User, db_session)
+    exiting = dao.get_one(response)
+    if exiting:
+        dao.update(
+            base=exiting,
+            params={data}
         )
-        await update.save_(db_session)
     else:
-        user = User(
-            user_id = user_id,
-            user_name = user_name,
-            full_name = full_name,
-            admin_status = admin_status
+        dao.create(
+            data={data}
         )
-        await db_session.add(user)
-        db_session.commit()
-        logger.info(f'Пользователь добавлен в бд\n id: {user_id}')
 
 

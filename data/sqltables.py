@@ -63,6 +63,12 @@ class ChatCache(Base):
     members_json = Column(JSONB)  # {"admins": [1, 2], "members": [3, 4, 5]}
     updated_at = Column(String, nullable=False)
 
+class SavesSettings(Base):
+    __tablename__ = 'saves_settings'
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), primary_key=True)
+    user_id = Column(BigInteger, ForeignKey('users.user_id'), index=True)
+    
+    
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

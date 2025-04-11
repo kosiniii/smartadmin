@@ -1,7 +1,7 @@
 import logging
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
-from keyborads.button_class.root_classes import Help_Settings
+from keyborads.button_class.root_classes import Help_Settings, Data
 from utils.inputing import __env__
 from utils.lists_or_dict import help_class
 from aiogram.types import CallbackData
@@ -12,17 +12,21 @@ MAIN_BOT_USERNAME = __env__('MAIN_BOT_USERNAME')
 help_callback = CallbackData("help", "command")
 
 
-def dash_panel():
+def dash_panel(data: Data):
     builder = InlineKeyboardBuilder()
     builder.button(
-        text='Добавить меня в чатик 💋',
+        text='📃 Дока о боте ',
+        url=f"https://github.com/kosiniii/{__env__('PROJECT_ON_GITHUB')}"
+    )
+    builder.button(
+        text='➕ Добавить в чат',
         url=f"https://t.me/{MAIN_BOT_USERNAME}?startgroup=true"
         )
     builder.button(
-        text='Дока о боте 📃',
-        url=f"https://github.com/kosiniii/{__env__('PROJECT_ON_GITHUB')}"
+        text='⚙ Настроить бота',
+        callback_data=data.settings
     )
-    builder.adjust(2)
+    builder.adjust(1, 2)
     return builder.as_markup(resize_keyboard=True)
 
 def pay_stars(stars: int):

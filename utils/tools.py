@@ -1,8 +1,8 @@
 import asyncio
 from datetime import datetime
 import logging
-from typing import Any
-from sqlalchemy import select
+from typing import Any, Dict, Optional, Type
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.types import Message
 from dataclasses import dataclass
@@ -13,52 +13,93 @@ import pytz
 from utils.lists_or_dict import admin_ru
 from utils.inputing import dp, __env__, multi
 from data.sqltables import BotChatINFO, ChatCache, ChatMember, MePayments, User
+from sqlalchemy.orm import DeclarativeMeta
 logger = logging.getLogger(__name__)
 
-def date_moscow(option: str) -> int | str:
-    moscow_time = pytz.timezone('Europe/Moscow')
-    if option == 'date':
-        time = datetime.now(moscow_time).date()
-    elif option == 'time_info':
-        time = datetime.now(moscow_time).strftime(
-            f"Дата: {markdown.hbold(f'%d.%m.%Y')}\n"
-            f"Время: {markdown.hbold('%H:%M')}"
-            )
-    elif option == 'time_and_date':
-        time = datetime.now(moscow_time).strftime(f'%d.%m.%Y''%H:%M')
-    elif option == 'time_now':
-        time = datetime.now(moscow_time)
-    else:
-        raise ValueError('Такого объекта не представленно в функции.')
-    return time
 
-async def user_changes_data(db_session: AsyncSession, cls, params: dict[str, Any]):
-    try:
-        user_id = params.get('user_id')
-        
-        if user_id:
-            base = await db_session.execute(select(cls).where(cls.user_id == user_id))
-            copy_table = base.scalars().one_or_none()
-            if copy_table:
-                update = Update_date(
-                    base=copy_table,
-                    params=params
+class PaymentService:
+    def __init__(self, db_session: AsyncSession):
+        self.dao = BaseDAO(MePayments, db_session)
+
+    async def add_or_update_payment(self, user_id: int, amount: float):
+        try:
+            existing = await self.dao.get_one(MePayments.user_id == user_id)
+            if existing:
+                new_stars = existing.donated_stars + amount
+                new_count = existing.payment_count + 1
+                await self.dao.update(
+                    MePayments.user_id == user_id,
+                    {
+                        'donated_stars': new_stars,
+                        'payment_count': new_count,
+                    }
                 )
-                await update.save_(db_session)
-                return copy_table
+                return {
+                    "date": date_moscow('time_and_date'),
+                    "donated_stars": new_stars,
+                    "payment_count": new_count,
+                }
             else:
-                tab = cls(**params)    
-                db_session.add(tab)
-                await db_session.commit()
-                logger.info(f'Добавлен новый юзер в таблицу {cls.__name__}')  
-                return tab
-        else:
-            logger.error(f'user_id не передан в словаре: {params}')
+                await self.dao.create({
+                    "user_id": user_id,
+                    "donated_stars": amount,
+                    "payment_count": 1,
+                })
+                return {
+                    "date": date_moscow('time_and_date'),
+                    "donated_stars": amount,
+                    "payment_count": 1,
+                }
+        except Exception as e:
+            logger.error(f"[PaymentService] Ошибка при добавлении оплаты: {e}")
             return None
-    except Exception as e:
-        logger.error(f'Ошибка в функции user_changes_data: {e}')
-        return None
 
+
+class BaseDAO:
+    def __init__(self, model: Type[DeclarativeMeta], db_session: AsyncSession):
+        self.model = model
+        self.db_session = db_session
+
+    async def get_one(self, where: ColumnElement) -> Optional[DeclarativeMeta]:
+        try:
+            result = await self.db_session.execute(select(self.model).where(where))
+            return result.scalars().one_or_none()
+        except Exception as e:
+            logger.error(f'DAO Ошибка: {e}')
+            return None
+
+    async def create(self, data: Dict[str, Any]) -> Optional[DeclarativeMeta]:
+        try:
+            obj = self.model(**data)
+            self.db_session.add(obj)
+            await self.db_session.commit()
+            logger.info('DAO добавлен новый юзер в базу')
+            return obj
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f'DAO Ошибка: {e}')
+            return None
+
+    async def update(self, where: ColumnElement, data: Dict[str, Any]) -> bool:
+        exiting = await self.get_one(where)
+        if not exiting:
+            logger.warning(f'DAO Объект не найден для обновления по: {where}')
+            return False
+                
+        try:
+            update = Update_date(
+                base=self.get_one(),
+                params=data
+            )
+            await update.save_(self.db_session)
+            return True
+        
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f'DAO Ошибка: {e}')
+            return False
+            
+            
 class GetInfoChat:
     def __init__(self, chat_id: int, db_session: AsyncSession):
         self.chat_id = chat_id
@@ -217,3 +258,20 @@ class Update_date:
             logger.error(f'Ошибка при сохранении в бд: {e}')
             await db_session.rollback()
             return False
+
+def date_moscow(option: str) -> int | str:
+    moscow_time = pytz.timezone('Europe/Moscow')
+    if option == 'date':
+        time = datetime.now(moscow_time).date()
+    elif option == 'time_info':
+        time = datetime.now(moscow_time).strftime(
+            f"Дата: {markdown.hbold(f'%d.%m.%Y')}\n"
+            f"Время: {markdown.hbold('%H:%M')}"
+            )
+    elif option == 'time_and_date':
+        time = datetime.now(moscow_time).strftime(f'%d.%m.%Y''%H:%M')
+    elif option == 'time_now':
+        time = datetime.now(moscow_time)
+    else:
+        raise ValueError('Такого объекта не представленно в функции.')
+    return time

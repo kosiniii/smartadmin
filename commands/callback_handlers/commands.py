@@ -31,7 +31,7 @@ async def create_buttons(call: CallbackQuery, calldata: dict):
         logger.info(f'Выбранная кнопка с data: {select_command if select_command is not None else log}')
         description = help_class.get(select_command, log)
     
-        await call.message.answer(description)
+        await call.message.edit_text(description)
     except Exception as e:
         logger.info(f'Ошибка в функции create_buttons: {e}')
         
