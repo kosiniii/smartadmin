@@ -11,12 +11,10 @@ from utils.inputing import __env__, bot
 from data.sqltables import async_session
 from utils.inputing import dp
 
+ask = input('Запуск с telethon? yes/no:')
 router = Router(name=__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-
-logging.basicConfig(level=logging.INFO)
 setup_webhook = __env__('LOCALHOST_WEBHOOK')
 
 def create_lifespan(bot: Bot):

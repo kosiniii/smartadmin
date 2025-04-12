@@ -24,14 +24,17 @@ router = Router(name=__name__)
 
 @router.message(Command(commands='start', prefix='/'))
 async def starting(message: Message):
+    message_id = message.message_id
+    chat_id = message.chat.id
     await message.answer(
         text='🚀 Я бот администратор.\n'
-        '/help Посмотреть как использовать\n'
-        '/donate Если вы хотите поддержать разработчика\n\n'
-        '/settings Настроить бота'
-        '/see Посмотреть статистику чата',
+        '/help Посмотреть как использовать\n\n'
+        '/settings Настроить бота\n\n'
+        '/see Посмотреть статистику чата\n\n'
+        '/donate Если вы хотите поддержать разработчика',
         reply_markup=dash_panel()
         )
+    await message.bot.pin_chat_message(chat_id, message_id)
         
 @router.message(Command('/see', prefix='/'))
 async def seemore(message: Message, db_session: AsyncSession):

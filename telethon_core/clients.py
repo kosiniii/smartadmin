@@ -6,7 +6,7 @@ from telethon_core.settings import TelegramAPI
 from telethon_core.utils import *
 from itertools import cycle
 from utils.inputing import __env__
-
+from main import ask
 logger = logging.getLogger(__name__)
 
 class MultiAccountManager:
@@ -21,6 +21,10 @@ class MultiAccountManager:
         self.is_bot_attached = False
 
     async def start_clients(self):
+        if ask == "no":
+            logger.info('Был произведен запуск без telethon')
+            return 
+        
         if not self.accounts_data or len(self.accounts_data) == 0 or \
         any(not account.get('api_id') or not account.get('api_hash') or not account.get('phone_number') \
             for account in self.accounts_data):

@@ -41,6 +41,6 @@ async def bot_added(event: ChatMemberUpdated, db_session: AsyncSession):
             logger.debug('ВНИМАНИЕ! не все данные были загруженны в бд')
 
 @router.chat_join_request()
-async def joing_to_chat(update: ChatJoinRequest, db_session: AsyncSession):
+async def joing_to_chat(event: ChatMemberUpdated, db_session: AsyncSession):
     pass
         

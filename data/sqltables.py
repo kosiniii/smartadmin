@@ -54,6 +54,7 @@ class ChatMember(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.chat_id'), index=True)
     user_id = Column(BigInteger, ForeignKey('users.user_id'), index=True)
+    warning_spammer = Column(String, nullable=False)
     role = Column(String, nullable=False)  # 'admin', 'member', 'creator'
     joined_at = Column(String, nullable=False)
     

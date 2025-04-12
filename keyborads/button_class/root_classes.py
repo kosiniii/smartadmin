@@ -47,5 +47,5 @@ class Help_Commands:
         role = '/role'
 
 class Data:
-    
+    connect_bot = 'connect_bot'
     settings = 'settings'

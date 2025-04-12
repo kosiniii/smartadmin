@@ -10,8 +10,9 @@ from aiogram.utils import markdown
 from telethon_core.utils import collect_user_ids
 from utils.inputing import bot
 import pytz
+from aiogram.types import TelegramObject, CallbackQuery, Message, LabeledPrice, PreCheckoutQuery, ChatJoinRequest, ChatMemberUpdated
 from utils.lists_or_dict import admin_ru
-from utils.inputing import dp, __env__, multi
+from utils.inputing import dp, __env__, multi, __new_user__, create_date
 from data.sqltables import BotChatINFO, ChatCache, ChatMember, MePayments, User
 from sqlalchemy.orm import DeclarativeMeta
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ class BaseDAO:
             obj = self.model(**data)
             self.db_session.add(obj)
             await self.db_session.commit()
-            logger.info('DAO добавлен новый юзер в базу')
+            logger.info('DAO добавлено в базу')
             return obj
         except Exception as e:
             await self.db_session.rollback()
@@ -259,6 +260,78 @@ class Update_date:
             await db_session.rollback()
             return False
 
+class WelcomeUser:
+    def __init__(self, event: ChatMemberUpdated , user_id: int, chat_id: int):
+        self.event = event
+        self.user_id = user_id
+        self.chat_id = chat_id
+    
+    async def check_spammer(self):
+        pass
+    
+    async def save_data(self):
+        role = self.event.new_chat_member.status
+        warning_spammer = self.check_spammer()
+        __new_user__.cashed(
+            'new_user',
+            data={
+                self.chat_id: {
+                    self.user_id: {
+                        'chat_id': self.chat_id,
+                        'user_id': self.user_id,
+                        'warning_spammer': warning_spammer,
+                        'role': role,
+                        'joing_date': create_date,
+                        }
+                    }
+                },
+            )
+
+
+class TimeCheduler:
+    def __init__(self, date: int | str, chat_id: int, db_session: AsyncSession):
+        self.date = date
+        self.chat_id = chat_id
+        self.db_session = db_session
+        self.dao = BaseDAO(ChatMember, self.db_session)
+    
+    async def add_new_data(self):
+        log_text = ''
+        try:
+            data = __new_user__.get_cashed()
+            if data:
+                chat_id: dict = data.get(self.chat_id, 'Не найден такой чат')
+                for user_id in chat_id.keys():
+                    exiting = await self.dao.create({user_id})
+                    if exiting:
+                        continue
+                    else:
+                        logger.warning(
+                            f'Ошибка в цикле в классе {__class__.__name__}\n'
+                            f'Не удалось добавить юзера в бд: {user_id}'
+                            )
+                log_text = 'ВСЕ юзеры были добавленны в базу.'
+                logger.info(log_text)
+            else:
+                log_text = (
+                    'Бот не получил ни каких данных с __new_user__\n'
+                    'Юзеры не были добавлены в базу.'
+                    ) 
+                logger.warning(log_text)
+            return log_text
+            
+        except Exception as e:
+            logger.error(f'Ошибка в {__class__.__name__}: {e}')
+            return False
+                 
+    async def tree_hours(self):
+        result = await self.add_new_data()
+        if not result:
+            result = '❌ ОШИБКА в TimeCheduler.add_new_data'
+            
+        await bot.send_message(self.chat_id, result)
+
+    
 def date_moscow(option: str) -> int | str:
     moscow_time = pytz.timezone('Europe/Moscow')
     if option == 'date':
