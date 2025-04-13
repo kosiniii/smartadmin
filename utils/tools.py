@@ -107,7 +107,7 @@ class GetInfoChat:
     def __init__(self, chat_id: int, db_session: AsyncSession):
         self.chat_id = chat_id
         self.db_session = db_session
-        self.dao = BaseDAO(BaseDAO(BotChatINFO, self.db_session))
+        self.dao = BaseDAO(BotChatINFO, self.db_session)
         self.inviter_id = 0
     
     async def __call__(self):
@@ -139,29 +139,32 @@ class GetInfoChat:
     
     async def save_to_db_data(self):
         try:
-            data_BCI = {
-            'chat_id': self.chat_id,
-            'chat_username': chat_username,
-            'inviter_id': inviter_id, 
-            'count_members': count_members,
-            'joing_bot_at': date
-            }
             text_log = ''
-            warning_log = (
-                    f'count_members: {count_members}\n inviter_id: {inviter_id}\n'
-                    f'ПРЕДУПРИЖДЕНИЕ не хватает данных в {text_log}'
-                    )
-            
             date = date_moscow(option='time_and_date')
             inviter_id = await self.get_inviter_id()
             count_members = await self.get_count_members()
-            chat_username = self.get_chat_username()
+            chat_username = await self.get_chat_username()
 
-            if count_members  == 0:
-                text_log = 'count_members'
-                logger.warning(warning_log)
+            data_BCI = {
+                'chat_id': self.chat_id,
+                'chat_username': chat_username,
+                'inviter_id': inviter_id, 
+                'count_members': count_members,
+                'joing_bot_at': date
+            }
+            
+            missing_data = []
+            if count_members == 0:
+                missing_data.append('count_members')
             if inviter_id == 0:
-                text_log = 'inviter_id'
+                missing_data.append('inviter_id')
+                
+            if missing_data:
+                text_log = ', '.join(missing_data)
+                warning_log = (
+                    f'ПРЕДУПРИЖДЕНИЕ! Не хватает данных: {text_log}.\n'
+                    f'count_members: {count_members}\ninviter_id: {inviter_id}\n'
+                )
                 logger.warning(warning_log)
                 
             BCI_dao = self.dao.create({data_BCI})
@@ -171,23 +174,30 @@ class GetInfoChat:
 
         except Exception as e:
             logger.error(f'Ошибка в классе {__class__.__name__}, в модуле save_to_db_data:\n {e}')
+            await self.db_session.rollback()
             return False
     
 class GetMembersIds:
-    def __init__(self, chat_username: str):
+    def __init__(self, chat_username: str, count: int, chat_id: int):
         self.chat_username = chat_username
+        self.count = count
+        self.chat_id = chat_id
         
-    async def get_members(self) -> list:
+    async def get_members(self) -> list | None:
         timeout = random.randint(600, 3600) # 5 and 60 min
-        count = self.get_count_members()
         mem = 150
-        if count >= mem:
+        users: list = await collect_user_ids(client=multi.get_or_switch_client(False), chat_username=self.chat_username, chat_id=self.chat_id)
+        
+        if "Leave" not in users:
+            logger.info('Юзер бот уже вышел из чата.')
+            return None
+            
+        if self.count >= mem:
             logger.info(f'В чате больше {mem} участников, начинается подготовка юзербота..\n Зпуск через {timeout // 60} минут') 
             asyncio.sleep(timeout)
-            users: list = await collect_user_ids(client=multi.get_or_switch_client(False), chat_username=self.chat_username)
             return users
         else:
-            logger.info(f'В чате меньше {mem} участников, парс не требуется. {count}')
+            logger.info(f'В чате меньше {mem} участников, парс не требуется. {self.count}')
             return []    
         
 class Update_date:

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from aiogram.types import Message
+from aiogram.types import Message, ChatMemberUpdated
 
 
 @dataclass
