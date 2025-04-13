@@ -5,11 +5,12 @@ from fastapi import FastAPI, Request, Depends
 from aiogram import Dispatcher, Router, Bot
 import logging
 from aiogram.types import Update
-from data.middlew import DatabaseMiddleware
+from data.middlew import CheckNotMessage, DatabaseMiddleware
 from data.sqltables import create_tables
-from utils.inputing import __env__, bot
+from utils.inputing import bot, dp
 from data.sqltables import async_session
-from utils.inputing import dp
+from config import __env__
+
 
 ask = input('Запуск с telethon? yes/no:')
 router = Router(name=__name__)
@@ -42,6 +43,7 @@ async def bot_webhook(request: Request):
     data = await request.json()
     update = Update(**data)
     dp.update.middleware(DatabaseMiddleware(async_session))
+    dp.message.middleware(CheckNotMessage())
     await dp.feed_update(bot, update)
     return {'status': 'ok'}
 

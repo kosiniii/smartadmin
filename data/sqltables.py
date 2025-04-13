@@ -38,37 +38,44 @@ class MePayments(Base):
 
     user = relationship('User', back_populates='payments')
 
+
+
 # Chat information    
 class BotChatINFO(Base):
     __tablename__ = "chats"
 
     chat_id = Column(BigInteger, primary_key=True)
+    chat_username = Column(String, nullable=True)
     inviter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
-    creator_id = Column(BigInteger, nullable=True)
     count_members = Column(BigInteger, nullable=False, default=1)
     joing_bot_at = Column(String, nullable=False)
     
-class ChatMember(Base):
-    __tablename__ = 'chat_members'
-    
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    chat_id = Column(Integer, ForeignKey('chats.chat_id'), index=True)
-    user_id = Column(BigInteger, ForeignKey('users.user_id'), index=True)
-    warning_spammer = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # 'admin', 'member', 'creator'
-    joined_at = Column(String, nullable=False)
-    
-class ChatCache(Base):
-    __tablename__ = "chat_cache"
-    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), primary_key=True)
-    members_json = Column(JSONB)  # {"admins": [1, 2], "members": [3, 4, 5]}
-    updated_at = Column(String, nullable=False)
 
 class SavesSettings(Base):
     __tablename__ = 'saves_settings'
-    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), primary_key=True)
     user_id = Column(BigInteger, ForeignKey('users.user_id'), index=True)
+    config_chats = Column(JSONB, nullable=True) # [chat_id or [chat_id, chat_id если конфиг не отличается]: {config}]
     
+    
+class ChatMember(Base):
+    __tablename__ = "chat_members"
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
+    user_id = Column(Integer, nullable=False)
+    role = Column(String, nullable=False)
+    joined_at = Column(String, nullable=False)
+    update_data = Column(String, nullable=False)
+
+    chat = relationship("BotChatINFO", back_populates="members")
+    
+class MessageUser(Base):
+    __tablename__ = "messages"
+    message_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
+    user_id = Column(BigInteger, nullable=False)
+    message_text = Column(String, nullable=False)
+    send_date = Column(String, nullable=False)
+    
+    chat = relationship("BotChatINFO", back_populates="messages")
     
 async def create_tables():
     async with engine.begin() as conn:

@@ -55,4 +55,9 @@ class RedisBase:
         if key is None:
             key = self.key 
             redis_client.delete(key)
-        return 
+        return
+
+__user_message__ = RedisBase('user_message', dict)    
+__new_user__ = RedisBase('new_user', dict)
+__mute_users__ = RedisBase('mute_users', dict)
+__ban_users__ = RedisBase('ban_users', dict)

@@ -109,3 +109,5 @@ class MultiAccountManager:
         except Exception as e:
             logger.error('Не перепрал в функции cycle_clients: \n {e}')
             
+data_telethon = TelegramAPI().create_json()
+multi = MultiAccountManager(data_telethon)

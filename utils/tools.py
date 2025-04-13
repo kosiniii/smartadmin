@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime
 import logging
+import random
 from typing import Any, Dict, Optional, Type
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,13 +8,15 @@ from aiogram.types import Message
 from dataclasses import dataclass
 from aiogram.utils import markdown
 from telethon_core.utils import collect_user_ids
-from utils.inputing import bot
+from telethon_core.clients import multi
 import pytz
-from aiogram.types import TelegramObject, CallbackQuery, Message, LabeledPrice, PreCheckoutQuery, ChatJoinRequest, ChatMemberUpdated
+from aiogram.types import ChatMemberUpdated, Chat
 from utils.lists_or_dict import admin_ru
-from utils.inputing import dp, __env__, multi, __new_user__, create_date
+from utils.inputing import dp, bot
 from data.sqltables import BotChatINFO, ChatCache, ChatMember, MePayments, User
 from sqlalchemy.orm import DeclarativeMeta
+from utils.date import date_moscow
+from data.redisetup import __ban_users__, __mute_users__, __new_user__
 logger = logging.getLogger(__name__)
 
 
@@ -105,6 +107,7 @@ class GetInfoChat:
     def __init__(self, chat_id: int, db_session: AsyncSession):
         self.chat_id = chat_id
         self.db_session = db_session
+        self.dao = BaseDAO(BaseDAO(BotChatINFO, self.db_session))
         self.inviter_id = 0
     
     async def __call__(self):
@@ -120,99 +123,73 @@ class GetInfoChat:
             return self.inviter_id
         return 0
     
-    async def get_chat_admins(self) -> list:
-        admins = await bot.get_chat_administrators(self.chat_id)
-        return [admin.user.id for admin in admins if not admins.user.is_bot]
-
-    async def get_chat_creator(self) -> int:
-        admins = await bot.get_chat_administrators(self.chat_id)
-        for admin in admins:
-            if admin.status in admin_ru:
-                return admin.user.id
-        logger.info(f'Не найден владелец чата {self.chat_id}')
-        return 0
-    
     async def get_count_members(self) -> int:
         count = bot.get_chat_member_count()
         if count:
             return count
         return 0
     
-    async def get_members(self, chat_username: str) -> list:
-        timeout = 300
+    async def get_chat_username(self):
+        chat: Chat = await bot.get_chat(self.chat_id)
+    
+        if chat.username:
+            return chat.username
+        else:
+            return "Not user"
+    
+    async def save_to_db_data(self):
+        try:
+            data_BCI = {
+            'chat_id': self.chat_id,
+            'chat_username': chat_username,
+            'inviter_id': inviter_id, 
+            'count_members': count_members,
+            'joing_bot_at': date
+            }
+            text_log = ''
+            warning_log = (
+                    f'count_members: {count_members}\n inviter_id: {inviter_id}\n'
+                    f'ПРЕДУПРИЖДЕНИЕ не хватает данных в {text_log}'
+                    )
+            
+            date = date_moscow(option='time_and_date')
+            inviter_id = await self.get_inviter_id()
+            count_members = await self.get_count_members()
+            chat_username = self.get_chat_username()
+
+            if count_members  == 0:
+                text_log = 'count_members'
+                logger.warning(warning_log)
+            if inviter_id == 0:
+                text_log = 'inviter_id'
+                logger.warning(warning_log)
+                
+            BCI_dao = self.dao.create({data_BCI})
+            if BCI_dao:
+                return True
+            return False
+
+        except Exception as e:
+            logger.error(f'Ошибка в классе {__class__.__name__}, в модуле save_to_db_data:\n {e}')
+            return False
+    
+class GetMembersIds:
+    def __init__(self, chat_username: str):
+        self.chat_username = chat_username
+        
+    async def get_members(self) -> list:
+        timeout = random.randint(600, 3600) # 5 and 60 min
         count = self.get_count_members()
-        mem = 50
+        mem = 150
         if count >= mem:
             logger.info(f'В чате больше {mem} участников, начинается подготовка юзербота..\n Зпуск через {timeout // 60} минут') 
             asyncio.sleep(timeout)
-            await collect_user_ids(client=multi.get_or_switch_client(False), chat_username=chat_username)
+            users: list = await collect_user_ids(client=multi.get_or_switch_client(False), chat_username=self.chat_username)
+            return users
         else:
             logger.info(f'В чате меньше {mem} участников, парс не требуется. {count}')
-            return []
-    
-    async def save_to_db_data(self, chat_username: str):
-        try:
-            date = date_moscow(option='time_and_date')
-            admins = await self.get_chat_admins()
-            creator = await self.get_chat_creator()
-            inviter_id = await self.get_inviter_id()
-            members = await self.get_members(chat_username)
-            count_members = await self.get_count_members()
-
-            chat_cache_result = await self.db_session.execute(
-                select(ChatCache).where(ChatCache.chat_id == self.chat_id)
-            )
-            chat_cache = chat_cache_result.scalar_one_or_none()
-
-            if members:
-                if count_members == len(members):
-                    logger.info(f"✅ Все участники успешно добавлены: count_members == members")
-                else:
-                    logger.warning(
-                        f"⚠️ Некоторые участники не были добавлены!\n"
-                        f"count_members: {count_members}, members: {len(members)}"
-                    )
-
-                if not chat_cache:
-                    chat_cache = ChatCache(
-                        chat_id=self.chat_id,
-                        members_json={
-                            "members": members,
-                            "admins": admins
-                            },
-                        updated_at=date
-                    )
-                    self.db_session.add(chat_cache)
-                else:
-                    chat_cache.members_json["members"] = members
-                    chat_cache.members_json["admins"] = admins
-                    chat_cache.updated_at = date
-
-            bot_chat_result = await self.db_session.execute(
-                select(BotChatINFO).where(BotChatINFO.chat_id == self.chat_id)
-            )
-            bot_chat = bot_chat_result.scalar_one_or_none()
-
-            if not bot_chat:
-                bot_chat = BotChatINFO(
-                    chat_id=self.chat_id,
-                    inviter_id=inviter_id,
-                    creator_id=creator,
-                    count_members=count_members,
-                    joing_bot_at=date
-                )
-                self.db_session.add(bot_chat)
-            else:
-                bot_chat.inviter_id = inviter_id
-                bot_chat.creator_id = creator
-                bot_chat.count_members = count_members
-                bot_chat.joing_bot_at = date   
-
-            await self.db_session.commit()
-        except Exception as e:
-            logger.error(f'Ошибка в классе {__class__.__name__}, в модуле save_to_db_data:\n {e}')
-            
-            
+            return []    
+        
 class Update_date:
     def __init__(self, base, params: dict[str, Any]):
         self.base = base
@@ -281,7 +258,7 @@ class WelcomeUser:
                         'user_id': self.user_id,
                         'warning_spammer': warning_spammer,
                         'role': role,
-                        'joing_date': create_date,
+                        'joing_date': date_moscow('time_and_date'),
                         }
                     }
                 },
@@ -302,7 +279,10 @@ class TimeCheduler:
             if data:
                 chat_id: dict = data.get(self.chat_id, 'Не найден такой чат')
                 for user_id in chat_id.keys():
-                    exiting = await self.dao.create({user_id})
+                    exiting = await self.dao.create({
+                        'user_id': user_id,
+                        'chat_id': self.chat_id
+                        })
                     if exiting:
                         continue
                     else:
@@ -332,19 +312,3 @@ class TimeCheduler:
         await bot.send_message(self.chat_id, result)
 
     
-def date_moscow(option: str) -> int | str:
-    moscow_time = pytz.timezone('Europe/Moscow')
-    if option == 'date':
-        time = datetime.now(moscow_time).date()
-    elif option == 'time_info':
-        time = datetime.now(moscow_time).strftime(
-            f"Дата: {markdown.hbold(f'%d.%m.%Y')}\n"
-            f"Время: {markdown.hbold('%H:%M')}"
-            )
-    elif option == 'time_and_date':
-        time = datetime.now(moscow_time).strftime(f'%d.%m.%Y''%H:%M')
-    elif option == 'time_now':
-        time = datetime.now(moscow_time)
-    else:
-        raise ValueError('Такого объекта не представленно в функции.')
-    return time

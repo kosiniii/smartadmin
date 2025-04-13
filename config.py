@@ -6,6 +6,7 @@ import logging
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
 def env_import(key: str | list) -> Any | list[Any]:
     MAIN_BOT_TOKEN = os.getenv('MAIN_BOT_TOKEN')
     LOCALHOST_WEBHOOK = os.getenv('LOCALHOST_WEBHOOK')
@@ -57,3 +58,5 @@ def env_import(key: str | list) -> Any | list[Any]:
             if keys == key:
                 return value
         raise ValueError(f'Такого элемента как {key} нет')
+    
+__env__ = env_import
