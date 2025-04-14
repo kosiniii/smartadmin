@@ -48,7 +48,7 @@ class BotChatINFO(Base):
     chat_username = Column(String, nullable=True)
     inviter_id = Column(BigInteger, ForeignKey("users.user_id"), nullable=False)
     count_members = Column(BigInteger, nullable=False, default=1)
-    joing_bot_at = Column(String, nullable=False)
+    join_bot_at = Column(String, nullable=False)
     
 
 class SavesSettings(Base):
@@ -61,12 +61,25 @@ class ChatMember(Base):
     __tablename__ = "chat_members"
     chat_id = Column(BigInteger, ForeignKey("chats.chat_id"), nullable=False)
     user_id = Column(Integer, nullable=False)
-    role = Column(String, nullable=False)
+    role = Column(String, nullable=False) 
     joined_at = Column(String, nullable=False)
     update_data = Column(String, nullable=False)
 
     chat = relationship("BotChatINFO", back_populates="members")
+
+class DangersFromTheUser(Base):
+    __tablename__ = 'dangers'
     
+    user_id = Column(BigInteger, ForeignKey("ChatMember.user_id"), nullable=False)
+    count_mute = Column(BigInteger, default=0)
+    count_ban = Column(BigInteger, default=0)
+    active_mute = Column(BigInteger, default=0)
+    active_ban = Column(BigInteger, default=0)
+    cache_date_user = Column(JSONB) # {chat_id: {mute: {start_date: str | int, end_date: str | int}, ban: str Типо есть или нет | bool}
+    percent_danger = Column(JSONB) # insult: [str | None], scam: [str | None], spam: [str | None], conclusion: str | None}
+
+    user_id = relationship('ChatMember', back_populates='dangers')
+
 class MessageUser(Base):
     __tablename__ = "messages"
     message_id = Column(BigInteger, primary_key=True, autoincrement=True)

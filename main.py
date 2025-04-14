@@ -12,7 +12,6 @@ from data.sqltables import async_session
 from config import __env__
 
 
-ask = input('Запуск с telethon? yes/no:')
 router = Router(name=__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

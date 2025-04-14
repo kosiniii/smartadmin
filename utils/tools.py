@@ -7,8 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.types import Message
 from dataclasses import dataclass
 from aiogram.utils import markdown
-from telethon_core.utils import collect_user_ids
-from telethon_core.clients import multi
 import pytz
 from aiogram.types import ChatMemberUpdated, Chat
 from utils.lists_or_dict import admin_ru
@@ -16,7 +14,7 @@ from utils.inputing import dp, bot
 from data.sqltables import BotChatINFO, ChatCache, ChatMember, MePayments, User
 from sqlalchemy.orm import DeclarativeMeta
 from utils.date import date_moscow
-from data.redisetup import __ban_users__, __mute_users__, __new_user__
+from data.redisetup import __ban_users__, __mute_users__, __new_user__, __user_last_message__
 logger = logging.getLogger(__name__)
 
 
@@ -183,23 +181,6 @@ class GetMembersIds:
         self.count = count
         self.chat_id = chat_id
         
-    async def get_members(self) -> list | None:
-        timeout = random.randint(600, 3600) # 5 and 60 min
-        mem = 150
-        users: list = await collect_user_ids(client=multi.get_or_switch_client(False), chat_username=self.chat_username, chat_id=self.chat_id)
-        
-        if "Leave" not in users:
-            logger.info('Юзер бот уже вышел из чата.')
-            return None
-            
-        if self.count >= mem:
-            logger.info(f'В чате больше {mem} участников, начинается подготовка юзербота..\n Зпуск через {timeout // 60} минут') 
-            asyncio.sleep(timeout)
-            return users
-        else:
-            logger.info(f'В чате меньше {mem} участников, парс не требуется. {self.count}')
-            return []    
-        
 class Update_date:
     def __init__(self, base, params: dict[str, Any]):
         self.base = base
@@ -253,28 +234,21 @@ class WelcomeUser:
         self.user_id = user_id
         self.chat_id = chat_id
     
-    async def check_spammer(self):
-        pass
+    async def scammer_injection(self):
+        __user_last_message__
+        
     
-    async def save_data(self):
+    async def redis_data_saves(self):
         role = self.event.new_chat_member.status
-        warning_spammer = self.check_spammer()
-        __new_user__.cashed(
-            'new_user',
-            data={
-                self.chat_id: {
-                    self.user_id: {
-                        'chat_id': self.chat_id,
-                        'user_id': self.user_id,
-                        'warning_spammer': warning_spammer,
-                        'role': role,
-                        'joing_date': date_moscow('time_and_date'),
-                        }
-                    }
-                },
-            )
-
-
+        scammer_injection = self.scammer_injection()
+        __new_user__.cashed('new_user', {
+            
+        })
+#__user_warns__
+# __user_message__
+# __new_user__
+# __mute_users__
+# __ban_users__
 class TimeCheduler:
     def __init__(self, date: int | str, chat_id: int, db_session: AsyncSession):
         self.date = date

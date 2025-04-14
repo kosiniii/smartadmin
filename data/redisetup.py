@@ -57,7 +57,8 @@ class RedisBase:
             redis_client.delete(key)
         return
 
-__user_message__ = RedisBase('user_message', dict)    
-__new_user__ = RedisBase('new_user', dict)
-__mute_users__ = RedisBase('mute_users', dict)
-__ban_users__ = RedisBase('ban_users', dict)
+__user_warns__ = RedisBase('user_warns', dict) # {user_id: {warn_chats: {count_mute: int, count_ban: int, warnings: {insult: [str | None], scam: [str | None], spam: [str | None], conclusion: str | None}}} в зависимости от __mute_users__, __ban_users__ .get('cause')
+__user_last_message__ = RedisBase('user_last_message', dict) # {user_id: {message_id: int, message_text: str, send_date: str | int, chat_id: int}} возможность брать новые user_id .get("user_id")
+__new_user__ = RedisBase('new_user', dict) # {chat_id: {user_id: {join_date: str | int, unknown_user: bool}}
+__mute_users__ = RedisBase('mute_users', dict) # {user_id: {mute_start: str | int, mute_end: str | int, chat_id: int, cause: str}}
+__ban_users__ = RedisBase('ban_users', dict) # {user_id: {ban_start: str | int, ban_end: str | int, chat_id: int, cause: str}}
