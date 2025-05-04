@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def env_import(key: str | list) -> Any | list[Any]:
+    DIRECT_LINK_APP = os.getenv('DIRECT_LINK_APP')
     MAIN_BOT_TOKEN = os.getenv('MAIN_BOT_TOKEN')
     LOCALHOST_WEBHOOK = os.getenv('LOCALHOST_WEBHOOK')
     LOCALHOST_WEBHOOK_PORT = int(os.getenv('LOCALHOST_WEBHOOK_PORT'))
@@ -24,6 +25,7 @@ def env_import(key: str | list) -> Any | list[Any]:
     PHONE_NUMBER = os.getenv('PHONE_NUMBER')
     
     stack = {
+        'DIRECT_LINK_APP': DIRECT_LINK_APP,
         'MAIN_BOT_TOKEN': MAIN_BOT_TOKEN,
         'LOCALHOST_WEBHOOK': LOCALHOST_WEBHOOK,
         'LOCALHOST_WEBHOOK_PORT': LOCALHOST_WEBHOOK_PORT,
@@ -41,9 +43,8 @@ def env_import(key: str | list) -> Any | list[Any]:
     }
     if isinstance(key, list):
         lkey = len(key)
-        if lkey <= 1:
-            raise ValueError('Передан один элемент в списке')
-        
+        if lkey == 0:
+            raise ValueError('Пустой список')
         result = []
         for item in key:
             for keys, value in stack.items():

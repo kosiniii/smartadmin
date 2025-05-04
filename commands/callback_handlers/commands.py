@@ -9,10 +9,10 @@ from aiogram.filters import Command, StateFilter
 from aiogram import Router
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from commands.states.state import panell, stars_count
+from commands.state import panell, stars_count
 from config import env_import
 from data.sqltables import MePayments, User
-from keyborads.button_class.root_classes import Help_Commands
+from keyborads.root_classes import Help_Commands
 from keyborads.inline import commands_help_admin, dash_panel, pay_stars
 from utils.tools import Update_date
 from utils.inputing import __env__

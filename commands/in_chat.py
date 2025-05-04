@@ -9,7 +9,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram import Router
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from commands.states.state import panell, stars_count
+from commands.state import panell, stars_count
 from config import env_import
 from data.sqltables import MePayments, User
 from keyborads.inline import dash_panel, pay_stars
@@ -34,7 +34,7 @@ async def bot_added(event: ChatMemberUpdated, db_session: AsyncSession):
         gic = GetInfoChat(chat_id, db_session, inviter.id)
         
         await bot.send_message(__env__('ADMIN_ID'), f"➡️ {markdown.hlink('Чел', f'tg://user?id={inviter.id}')} пригласил бота в чат {chat.title} ⬅️")
-        await bot.send_message(inviter.id, f'Спасибо что пригласили в чат -> {markdown.hcode(chat_title)} 🤗')
+        await bot.send_message(inviter.id, f'Спасибо что пригласили в чат -> {markdown.hcode(chat_title)}')
         
         if await gic.save_to_db_data():
             logger.info('Все данные с чата УСПЕШНО! загруженны в бд')

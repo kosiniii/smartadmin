@@ -9,7 +9,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram import Router
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from commands.states.state import panell, stars_count
+from commands.state import panell, stars_count
 from config import env_import
 from data.sqltables import MePayments, User
 from keyborads.inline import commands_help_admin, dash_panel, pay_stars
@@ -17,6 +17,7 @@ from utils.dataclass import BasicUser
 from utils.tools import BaseDAO, PaymentService, UpdateDAO, Update_date, changes_data
 from utils.inputing import __env__
 from utils.inputing import bot
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ async def commsettings():
 async def me_donation(message: Message, state: FSMContext):
     await message.answer(
         text='Оу, я вижу что вы хотите поддержать проект 😁,\n'
-        '🤩 Введите кол-во звезд,\n'
+        'Введите кол-во звезд,\n'
         'которое хотите пожертвовать проекту:'
         )
     await state.set_state(stars_count.count)  
@@ -68,7 +69,7 @@ async def create_payment_stars(message: Message, state: FSMContext):
     await bot.send_invoice(
         chat_id=message.chat.id,
         title="Покупка звезд",
-        description=f"Вы жертвуете {stars_dinamic} звезд!",
+        description=f"АХУЕТЬ {stars_dinamic} {'звезд' if stars_dinamic > 1 else 'звезду'}",
         payload=f"purchase_stars_{user.user_id}",
         provider_token=__env__('PROVIDER_TOKEN_PAY'),
         currency="STARS",
@@ -98,9 +99,9 @@ async def successful_payment(message: Message, db_session: AsyncSession):
         logger.info(f'Оплата прошла:\n amount: {amount_rub}\n user_id: {user_id}') 
         result_text = (f'\n Вы донатите уже {markdown.hbold(payment_count)} раза!'
                     f'\n 💫 Звезд сколько вы уже задонатили: {markdown.hbold(amount)} 💫'
-                    f'\n Огромное вам спасибо 🤗')          
+                    f'\n Огромное вам спасибо за поддержку!')          
         await message.answer(
-            f"❤️ Огромное спасибо за кровно потраченные {markdown.hbold(amount_rub)}₽ ❤️"
+            f"Всего вложенно 🐖 -> {markdown.hbold(amount_rub)}₽"
             f"{f'\n {result_text if payment_count > 1 else None}'}"
         )
     else:
@@ -113,6 +114,21 @@ async def help_for_admins(message: Message):
     await message.answer(
         text='Ознакомься с командами и с их настройкой',
         reply_markup=commands_help_admin()
+        )
+
+@router.message(Command('app', prefix='/'))
+async def app(message: Message):
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text='📱 Запустить приложение',
+        url=f"{__env__('DIRECT_LINK_APP')}"
+        )
+    
+    await message.answer(
+        text='Запускай приложение и тестируй модели AI\n'
+        f'{"Также и для парсеров." if message.from_user.id == __env__("ADMIN_ID") else " "}\n',
+        reply_markup=builder.as_markup()
         )
 
 @router.message(Command.commands['/start', '/donate', '/help', '/settings'])  

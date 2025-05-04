@@ -1,23 +1,5 @@
 from dataclasses import dataclass
-from aiogram.types import Message, ChatMemberUpdated
 
-
-@dataclass
-class BasicUser:
-    user_id: int
-    full_name: str
-    user_name: str | None
-
-    @classmethod
-    def from_message(cls, message: Message):
-        return cls(
-            user_id=message.from_user.id,
-            full_name=message.from_user.full_name if len(message.from_user.full_name) <= 30 else message.from_user.full_name[:10].join('...'),
-            user_name=message.from_user.username if message.from_user.username else "Без него",
-            chat_id = message.chat.id,
-            message_text = message.text,    
-        )
-   
 @dataclass(eq=False)
 class TelethonLog:
     api_id: int

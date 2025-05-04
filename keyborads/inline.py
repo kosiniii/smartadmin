@@ -1,7 +1,7 @@
 import logging
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
-from keyborads.button_class.root_classes import Help_Settings, Data
+from keyborads.root_classes import Help_Settings, Data
 from utils.inputing import __env__
 from utils.lists_or_dict import help_class
 from aiogram.types import CallbackData
@@ -10,10 +10,9 @@ from aiogram.types import CallbackData
 logger = logging.getLogger(__name__)
 MAIN_BOT_USERNAME = __env__('MAIN_BOT_USERNAME')
 help_callback = CallbackData("help", "command")
-
+builder = InlineKeyboardBuilder()
 
 def dash_panel(data: Data):
-    builder = InlineKeyboardBuilder()
     builder.button(
         text='📃 Дока о боте ',
         url=f"https://github.com/kosiniii/{__env__('PROJECT_ON_GITHUB')}"
@@ -30,16 +29,14 @@ def dash_panel(data: Data):
     return builder.as_markup(resize_keyboard=True)
 
 def pay_stars(stars: int):
-    builder = InlineKeyboardBuilder()
     builder.button(
-        text=f'Оплатить {stars} ⭐️',
+        text=f'{stars} к оплате',
         pay=True
         )
     return builder.as_markup(resize_keyboard=True)
 
 def commands_help_admin():
     try:
-        builder = InlineKeyboardBuilder()
         sum_buttons = 1
         for command in help_class.keys():
             builder.button(
@@ -57,4 +54,12 @@ def commands_help_admin():
             f'Причина: \n{e}'
             )
         return None
+    
+def app_button():
+    builder.button(
+        text='📱 Запустить приложение',
+        url=f"{__env__('DIRECT_LINK_APP')}"
+    )
+    builder.adjust(1)
+    return builder.as_markup()
     

@@ -13,8 +13,7 @@ from utils.lists_or_dict import admin_ru
 from utils.inputing import dp, bot
 from data.sqltables import BotChatINFO, ChatCache, ChatMember, MePayments, User
 from sqlalchemy.orm import DeclarativeMeta
-from utils.date import date_moscow
-from data.redisetup import __ban_users__, __mute_users__, __new_user__, __user_last_message__
+from utils.date import DateMoscow, date_moscow
 logger = logging.getLogger(__name__)
 
 
@@ -230,20 +229,17 @@ class Update_date:
 
 class WelcomeUser:
     def __init__(self, event: ChatMemberUpdated , user_id: int, chat_id: int):
+        self.date = DateMoscow('time_and_date_str')
         self.event = event
         self.user_id = user_id
         self.chat_id = chat_id
+        self.bool: bool = False
+        self.find_chat = None
     
-    async def scammer_injection(self):
-        __user_last_message__
+    async def inject(self, db_session: AsyncSession):
+        pass
         
-    
-    async def redis_data_saves(self):
-        role = self.event.new_chat_member.status
-        scammer_injection = self.scammer_injection()
-        __new_user__.cashed('new_user', {
-            
-        })
+        
 #__user_warns__
 # __user_message__
 # __new_user__
